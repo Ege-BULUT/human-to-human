@@ -327,3 +327,7 @@
     gap: 12px;
   }
 }
+
+/* projector screen: watch only */
+.screen-mode .player-only { display: none !important; }
+.screen-mode .viewport { pointer-events: none; }

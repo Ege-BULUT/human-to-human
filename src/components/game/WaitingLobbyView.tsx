@@ -153,6 +153,14 @@ export function WaitingLobbyView({
               </div>
               <p className="text-xs text-center text-muted-foreground">
                 Share the link to invite players
+                {isHost && (
+                  <>
+                    {" · "}
+                    <a href={`${roomLink}&screen`} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
+                      Open projector screen
+                    </a>
+                  </>
+                )}
               </p>
             </div>
           </div>

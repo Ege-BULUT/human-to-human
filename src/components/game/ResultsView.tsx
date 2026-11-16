@@ -149,7 +149,7 @@ export function ResultsView({
       </div>
 
       {/* actions */}
-      <div className="p-5 pt-4 flex-shrink-0 w-full border-t border-border flex gap-3 mobile:flex-col-reverse mobile:px-4">
+      <div className="player-only p-5 pt-4 flex-shrink-0 w-full border-t border-border flex gap-3 mobile:flex-col-reverse mobile:px-4">
         <Button variant="outline" size="lg" className="shrink-0" onClick={saveCard} disabled={cardBusy || !narrativeStory}>
           {cardBusy ? "Drawing…" : "Save group card"}
         </Button>

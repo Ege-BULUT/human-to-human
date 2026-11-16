@@ -159,6 +159,12 @@ const REVEAL_MS = 4600;
 
 export default class GameServer implements Party.Server {
   private users = new Map<string, UserState>();
+  // projector screens: receive everything, never count as players
+  private screens = new Set<string>();
+
+  private players(): Party.Connection[] {
+    return [...this.room.getConnections()].filter((c) => this.users.has(c.id));
+  }
   private phase: GamePhase = GamePhase.LOBBY;
   private currentQuestionIndex: number = 0;
   private revealRequests = new Map<string, Set<string>>(); // requesterId → Set<targetIds>
@@ -235,20 +241,25 @@ export default class GameServer implements Party.Server {
     return variantColor;
   }
 
-  onConnect(connection: Party.Connection, _ctx: Party.ConnectionContext): void {
-    // Assign random name and unique color
-    const name = randomName();
-    const color = this.getUniqueColor();
-    this.users.set(connection.id, { name, color, answers: new Map() });
+  onConnect(connection: Party.Connection, ctx: Party.ConnectionContext): void {
+    const isScreen = new URL(ctx.request.url).searchParams.has("screen");
+    if (isScreen) {
+      this.screens.add(connection.id);
+    } else {
+      // Assign random name and unique color
+      const name = randomName();
+      const color = this.getUniqueColor();
+      this.users.set(connection.id, { name, color, answers: new Map() });
 
-    // Broadcast join to others
-    this.room.broadcast(
-      JSON.stringify({ type: "join", id: connection.id, name, color }),
-      [connection.id]
-    );
+      // Broadcast join to others
+      this.room.broadcast(
+        JSON.stringify({ type: "join", id: connection.id, name, color }),
+        [connection.id]
+      );
+    }
 
     // Send sync payload to new connection
-    const users = [...this.room.getConnections()].map((c) => {
+    const users = this.players().map((c) => {
       const u = this.users.get(c.id);
       return {
         id: c.id,
@@ -306,7 +317,7 @@ export default class GameServer implements Party.Server {
     connection.send(JSON.stringify(syncMsg));
 
     // If in RESULTS or REVEAL phase, send appropriate data
-    if (this.phase === GamePhase.RESULTS || this.phase === GamePhase.REVEAL) {
+    if (!isScreen && (this.phase === GamePhase.RESULTS || this.phase === GamePhase.REVEAL)) {
       this.sendResultsToConnection(connection);
     }
   }
@@ -320,6 +331,7 @@ export default class GameServer implements Party.Server {
     } catch {
       return;
     }
+    if (this.screens.has(sender.id)) return; // screens only watch
 
     // Handle cursor updates (broadcast to others)
     if (isValidCursorMessage(payload)) {
@@ -440,7 +452,7 @@ export default class GameServer implements Party.Server {
         if (this.phase !== GamePhase.LOBBY) return;
         // Only allow host to start the game
         if (this.hostId === null || sender.id !== this.hostId) return;
-        const connectedUsers = [...this.room.getConnections()];
+        const connectedUsers = this.players();
         // Require at least 2 players to start
         if (connectedUsers.length < 2) return;
         // Ensure lobby is configured
@@ -792,7 +804,7 @@ export default class GameServer implements Party.Server {
     }
     
     // Send updated config to all players
-    const allUsers = [...this.room.getConnections()].map((c) => {
+    const allUsers = this.players().map((c) => {
       const u = this.users.get(c.id);
       return {
         id: c.id,
@@ -827,6 +839,7 @@ export default class GameServer implements Party.Server {
 
   private leave(connection: Party.Connection): void {
     const userId = connection.id;
+    if (this.screens.delete(userId)) return;
     
     // Close any active chats this user is in
     for (const [chatId, session] of this.activeChats.entries()) {
@@ -874,7 +887,7 @@ export default class GameServer implements Party.Server {
   }
 
   private checkAllAnsweredCurrentQuestion(): boolean {
-    const connectedUsers = [...this.room.getConnections()];
+    const connectedUsers = this.players();
 
     // Need at least 2 players
     if (connectedUsers.length < 2) return false;
@@ -1003,7 +1016,7 @@ export default class GameServer implements Party.Server {
     this.room.broadcast(JSON.stringify(phaseChange));
 
     // Send personalized results to each connection
-    for (const connection of this.room.getConnections()) {
+    for (const connection of this.players()) {
       this.sendResultsToConnection(connection);
     }
 
@@ -1147,7 +1160,7 @@ export default class GameServer implements Party.Server {
           return;
         }
 
-        const connectedUsers = [...this.room.getConnections()];
+        const connectedUsers = this.players();
         const pairs: Array<{
           userAId: string;
           userBId: string;
@@ -1261,7 +1274,7 @@ export default class GameServer implements Party.Server {
         // Re-send results to all connections with updated connection reasons
         // Only if we're still in RESULTS or REVEAL phase
         if (this.phase === GamePhase.RESULTS || this.phase === GamePhase.REVEAL) {
-          for (const connection of this.room.getConnections()) {
+          for (const connection of this.players()) {
             this.sendResultsToConnection(connection);
           }
         }
@@ -1280,7 +1293,7 @@ export default class GameServer implements Party.Server {
     const user = this.users.get(connection.id);
     if (!user) return;
 
-    const connectedUsers = [...this.room.getConnections()];
+    const connectedUsers = this.players();
     const scores: CompatibilityScore[] = [];
 
     // Calculate compatibility with all other users

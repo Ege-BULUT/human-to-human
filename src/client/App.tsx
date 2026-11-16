@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { AnsweringView } from "@/components/game/AnsweringView";
 import { ResultsView } from "@/components/game/ResultsView";
 import { RevealView } from "@/components/game/RevealView";
@@ -11,6 +11,7 @@ import { ChatModal } from "@/components/game/ChatModal";
 import { Cursor } from "@/components/game/Cursor";
 import { Creature } from "@/components/creature/Creature";
 import { PresenceStrip } from "@/components/game/PresenceStrip";
+import { ScreenLobby, ScreenReveal } from "@/components/game/ScreenViews";
 import { MutualRevealCelebration } from "@/components/game/MutualRevealCelebration";
 import { AnimatePresence } from "framer-motion";
 import { GamePhase } from "@/types/game";
@@ -45,6 +46,8 @@ function useIsMobile() {
 
 export default function App() {
   const isMobile = useIsMobile();
+  // projector screen: watches the room, never plays
+  const isScreen = useMemo(() => new URLSearchParams(location.search).has("screen"), []);
   const [scale, setScale] = useState(1);
   const [isClicking, setIsClicking] = useState(false);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
@@ -242,7 +245,7 @@ export default function App() {
   const displayColor = myColor || stableMyColor.current;
   
   // Hide native cursor when we have cursor identity (using stable values)
-  const cursorStyle = displayColor && displayName ? { cursor: "none" } : undefined;
+  const cursorStyle = displayColor && displayName && !isScreen ? { cursor: "none" } : undefined;
 
   const handleAnswer = (questionId: string, answerId: string) => {
     sendMessage({ type: "ANSWER", questionId, answerId });
@@ -359,13 +362,15 @@ export default function App() {
   useEffect(() => {
     const onResize = () => {
       setScale(
-        Math.min(window.innerWidth / VIEWPORT_W, window.innerHeight / VIEWPORT_H, 1)
+        isScreen
+          ? Math.min(window.innerWidth / VIEWPORT_W, window.innerHeight / (VIEWPORT_H * 1.22)) // projectors: fill the wall
+          : Math.min(window.innerWidth / VIEWPORT_W, window.innerHeight / VIEWPORT_H, 1)
       );
     };
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [isScreen]);
 
   // Cursor tracking - decoupled local rendering from server updates
   useEffect(() => {
@@ -396,6 +401,7 @@ export default function App() {
       lastSendRef.current = now;
       sendMessage({ type: "cursor", x, y });
     };
+    if (isScreen) return;
     document.addEventListener("mousemove", onMove);
     return () => document.removeEventListener("mousemove", onMove);
   }, [status, sendMessage]);
@@ -512,7 +518,11 @@ export default function App() {
 
   const views = (
     <>
-          {phase === GamePhase.LOBBY && roomId && (
+          {phase === GamePhase.LOBBY && roomId && isScreen && (
+            <ScreenLobby users={users} joinLink={getRoomLink(roomId)} deckName={lobbyConfig?.deck || ""} />
+          )}
+          {phase === GamePhase.REVEAL && isScreen && <ScreenReveal users={users} />}
+          {phase === GamePhase.LOBBY && roomId && !isScreen && (
             <WaitingLobbyView
               users={users}
               myId={myId}
@@ -561,7 +571,7 @@ export default function App() {
               deckName={lobbyConfig?.deck || ""}
             />
           )}
-          {phase === GamePhase.REVEAL && (
+          {phase === GamePhase.REVEAL && !isScreen && (
             <RevealView
               matches={results}
               revealedUsers={revealedUsers}
@@ -619,7 +629,7 @@ export default function App() {
     </>
   );
 
-  if (isMobile) {
+  if (isMobile && !isScreen) {
     return (
       <>
         <div className="mobile-shell">
@@ -649,7 +659,7 @@ export default function App() {
 
   return (
     <>
-      <div className="viewport-container" style={cursorStyle}>
+      <div className={`viewport-container${isScreen ? " screen-mode" : ""}`} style={cursorStyle}>
         <img 
           src="/logo-name.svg" 
           alt="Logo" 
@@ -719,8 +729,9 @@ export default function App() {
       </div>
       
       {/* Local player cursor - rendered like remote cursors for consistency */}
-      {displayName && 
-        displayColor && 
+      {!isScreen &&
+        displayName &&
+        displayColor &&
         mousePosition && (() => {
           const dropEventId = displayName ? dropEventIds[displayName] : undefined;
           return (
@@ -746,16 +757,16 @@ export default function App() {
           );
         })()}
       
-      {overlays}
+      {!isScreen && overlays}
 
       {/* players on phones send no cursor; show them so desktop players still see everyone */}
       {(() => {
         const phoneUsers = Object.fromEntries(
           Object.entries(users).filter(([id, u]) => id !== myId && (u.x == null || u.y == null)),
         );
-        if (Object.keys(phoneUsers).length === 0 || phase === GamePhase.LOBBY) return null;
+        if (Object.keys(phoneUsers).length === 0 || phase === GamePhase.LOBBY || (isScreen && phase === GamePhase.REVEAL)) return null;
         return (
-          <div className="fixed bottom-2 right-3 z-10 flex items-center gap-1 rounded-2xl bg-background/80 backdrop-blur border border-border pl-3">
+          <div className={`fixed bottom-2 right-3 z-10 flex items-center gap-1 rounded-2xl bg-background/80 backdrop-blur border border-border pl-3${isScreen ? " origin-bottom-right scale-150" : ""}`}>
             <span className="text-[11px] text-muted-foreground whitespace-nowrap">On phones</span>
             <PresenceStrip
               users={phoneUsers}
@@ -766,7 +777,7 @@ export default function App() {
         );
       })()}
 
-      {roomId && myName && myColor && phase !== GamePhase.LOBBY && (
+      {roomId && myName && myColor && phase !== GamePhase.LOBBY && !isScreen && (
         <div className="status-bar">
           <div className="flex items-center gap-2">
             <Creature name={myName} color={myColor} size={36} />

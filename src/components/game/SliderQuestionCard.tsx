@@ -83,7 +83,7 @@ export function SliderQuestionCard({
         <Button
           variant="gameOutline"
           effect="expand"
-          className="h-auto py-4 px-8 text-base"
+          className="player-only h-auto py-4 px-8 text-base"
           style={
             isConfirmed && myColor
               ? {
