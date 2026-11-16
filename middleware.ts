@@ -1,6 +1,7 @@
-// Vercel Routing Middleware: the private demo is only reachable with an
-// access code. Set ACCESS_CODE in the Vercel project; with it unset nobody
-// gets in (fails closed). Local dev (vite) never runs this file.
+// Optional access code for a private preview on Vercel (Routing Middleware).
+// Set ACCESS_CODE in the Vercel project to turn it on; unset, the site is
+// open. Only Vercel runs this file: local dev and the Docker/PartyKit
+// deployment ignore it.
 import { next } from "@vercel/functions";
 
 export const config = { matcher: "/:path*" };
@@ -44,7 +45,7 @@ const html = (body: string, status: number) =>
 
 export default async function middleware(req: Request) {
   const code = process.env.ACCESS_CODE;
-  if (!code) return html(page("This preview is closed.", "/"), 503);
+  if (!code) return next();
   const expected = await token(code);
   const url = new URL(req.url);
 

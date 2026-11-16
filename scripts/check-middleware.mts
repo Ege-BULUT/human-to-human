@@ -2,7 +2,7 @@
 const { default: mw } = await import('../middleware.ts');
 const assert = (c: unknown, m: string) => { if (!c) { console.log('FAIL', m); process.exit(1); } else console.log('ok', m); };
 delete process.env.ACCESS_CODE;
-assert((await mw(new Request('https://x.app/'))).status === 503, 'closed without ACCESS_CODE');
+assert((await mw(new Request('https://x.app/'))).headers.get('x-middleware-next') === '1', 'open without ACCESS_CODE');
 process.env.ACCESS_CODE = 'tilki42';
 const r1 = await mw(new Request('https://x.app/?room=abc'));
 assert(r1.status === 401 && (await r1.text()).includes('value="/?room=abc"'), 'gate keeps room link');
