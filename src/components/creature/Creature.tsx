@@ -81,13 +81,17 @@ export const Creature = memo(function Creature({
     ...style,
   } as CSSProperties;
 
+  // poses are authored for a creature facing right; mirror them when flipped
+  const effPose: CreaturePose = facingLeft
+    ? pose === "hf-left" ? "hf-right" : pose === "hf-right" ? "hf-left" : pose
+    : pose;
   const classes = [
     "creature",
     `cr-${adjective.toLowerCase()}`,
     moving && "cr-moving",
     clicking && "cr-clicking",
     surprised && "cr-surprised",
-    `cr-pose-${pose}`,
+    `cr-pose-${effPose}`,
     className,
   ]
     .filter(Boolean)

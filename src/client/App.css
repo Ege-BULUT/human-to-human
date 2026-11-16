@@ -222,3 +222,11 @@
 }
 
 /* Removed: font-weight is now handled inline for the name span only */
+
+.cursor-name {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.cursor-name-hidden {
+  opacity: 0;
+  transform: scale(0.8);
+}

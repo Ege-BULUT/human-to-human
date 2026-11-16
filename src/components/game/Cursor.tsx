@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Creature } from "@/components/creature/Creature";
+import { Creature, type CreaturePose } from "@/components/creature/Creature";
 
 // Arrow tip sits at (4,4): the hotspot the wrappers offset by.
 const POINTER_PATH = "M4 4 L4 19.5 L8.4 15.4 L11.4 21.6 L14.2 20.3 L11.2 14.2 L17.2 13.8 Z";
@@ -14,6 +14,8 @@ type CursorProps = {
   isClicking?: boolean;
   isOnCooldown?: boolean;
   surprised?: boolean;
+  pose?: CreaturePose;
+  showName?: boolean;
 };
 
 // Derives "moving" and facing from successive positions, touching React state
@@ -52,6 +54,8 @@ export function Cursor({
   isClicking = false,
   isOnCooldown = false,
   surprised = false,
+  pose,
+  showName = true,
 }: CursorProps) {
   const { moving, facingLeft } = useMotion(x, y);
   return (
@@ -72,8 +76,9 @@ export function Cursor({
         facingLeft={facingLeft}
         clicking={isClicking}
         surprised={surprised}
+        pose={pose}
       />
-      <span className="cursor-name">{name}</span>
+      <span className={`cursor-name${showName ? "" : " cursor-name-hidden"}`}>{name}</span>
     </div>
   );
 }

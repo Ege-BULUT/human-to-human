@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { AnsweringView } from "@/components/game/AnsweringView";
 import { ResultsView } from "@/components/game/ResultsView";
 import { RevealView } from "@/components/game/RevealView";
-import { CreateLobbyView } from "@/components/game/CreateLobbyView";
+import { Landing } from "@/components/landing/Landing";
 import { WaitingLobbyView } from "@/components/game/WaitingLobbyView";
 import { IntroView } from "@/components/game/IntroView";
 import { NudgeNotification } from "@/components/game/NudgeNotification";
@@ -460,39 +460,9 @@ export default function App() {
     }
   }, [isCurrentUserIntroReady, sendMessage]);
 
-  // If no roomId in URL, show create lobby view
+  // If no roomId in URL, show the landing page (deck picker included)
   if (!roomId) {
-    return (
-      <div className="viewport-container">
-        <img 
-          src="/logo-name.svg" 
-          alt="Logo" 
-          className="absolute" 
-          style={{ 
-            height: `${64 * scale}px`,
-            top: `calc(50% - ${(VIEWPORT_H * scale) / 2 + 80 * scale}px)`
-          }} 
-        />
-        <div
-          className="viewport"
-          style={{
-            width: VIEWPORT_W,
-            height: VIEWPORT_H,
-            transform: `scale(${scale})`,
-          }}
-        >
-          <CreateLobbyView onCreateLobby={handleCreateLobby} />
-        </div>
-        <p 
-          className="absolute text-sm text-muted-foreground"
-          style={{
-            top: `calc(50% + ${(VIEWPORT_H * scale) / 2 + 16 * scale}px)`
-          }}
-        >
-          created with <span className="font-bold">Cursor</span>, <span className="font-bold">MiniMax</span> and <span className="font-bold">Hume.ai</span>
-        </p>
-      </div>
-    );
+    return <Landing onCreateLobby={handleCreateLobby} />;
   }
 
   return (
