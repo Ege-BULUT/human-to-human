@@ -16,6 +16,7 @@ type CursorProps = {
   surprised?: boolean;
   pose?: CreaturePose;
   showName?: boolean;
+  away?: boolean; // creature is off at the answer reveal
 };
 
 // Derives "moving" and facing from successive positions, touching React state
@@ -56,6 +57,7 @@ export function Cursor({
   surprised = false,
   pose,
   showName = true,
+  away = false,
 }: CursorProps) {
   const { moving, facingLeft } = useMotion(x, y);
   return (
@@ -68,7 +70,7 @@ export function Cursor({
         <path d={POINTER_PATH} fill={color} stroke="#2F2925" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
       <Creature
-        className="cursor-creature"
+        className={`cursor-creature${away ? " cursor-creature-away" : ""}`}
         name={name}
         color={color}
         size={60}

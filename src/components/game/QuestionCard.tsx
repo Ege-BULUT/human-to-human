@@ -9,9 +9,10 @@ type QuestionCardProps = {
   onAnswer?: (questionId: string, answerId: string) => void;
   hasAnswered?: boolean;
   myColor?: string | null;
+  pickedIds?: string[]; // set during the answer reveal
 };
 
-export function QuestionCard({ question, onAnswer, hasAnswered = false, myColor }: QuestionCardProps) {
+export function QuestionCard({ question, onAnswer, hasAnswered = false, myColor, pickedIds }: QuestionCardProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
 
@@ -44,7 +45,7 @@ export function QuestionCard({ question, onAnswer, hasAnswered = false, myColor 
       <h2 className="text-4xl font-semibold text-center text-foreground leading-[1.1] w-[66.666667vw] mobile:text-[22px] mobile:leading-snug mobile:w-full">
         {question.text}
       </h2>
-      <div className="grid grid-cols-2 gap-4 w-full mobile:grid-cols-1 mobile:gap-2.5">
+      <div className={`grid grid-cols-2 gap-4 w-full mobile:grid-cols-1 mobile:gap-2.5${pickedIds ? " answer-revealing" : ""}`}>
         {question.answers.map((answer, index) => {
           const isSelected = selectedId === answer.id;
           return (
@@ -55,6 +56,8 @@ export function QuestionCard({ question, onAnswer, hasAnswered = false, myColor 
               transition={{ duration: 0.4, delay: index * 0.15 }}
             >
               <Button
+                data-answer-id={answer.id}
+                data-empty={pickedIds && !pickedIds.includes(answer.id) ? "" : undefined}
                 variant="gameOutline"
                 effect="expand"
                 className="min-h-[144px] py-10 px-12 text-base mobile:min-h-[56px] mobile:py-3 mobile:px-4 mobile:text-[15px] whitespace-normal text-center w-full break-words"

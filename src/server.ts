@@ -18,6 +18,7 @@ import {
   type RevealStatusMessage,
   type RevealMutualMessage,
   type QuestionAdvanceMessage,
+  type AnswerRevealMessage,
   type NarrativeMessage,
   type ReadyStatusMessage,
   type IntroReadyMessage,
@@ -154,6 +155,8 @@ function getQuestions(config: LobbyConfig | null): Question[] {
   return deck ? deckToQuestions(deck) : [];
 }
 
+const REVEAL_MS = 4600;
+
 export default class GameServer implements Party.Server {
   private users = new Map<string, UserState>();
   private phase: GamePhase = GamePhase.LOBBY;
@@ -170,6 +173,7 @@ export default class GameServer implements Party.Server {
   private connectionInsights: Map<string, Map<string, string>> = new Map(); // userId → (otherUserId → reason)
   private connectionInsightsGenerationPromise: Promise<void> | null = null; // Track ongoing connection insights generation
   private nudgeCooldowns = new Map<string, Map<string, number>>(); // senderId → (targetId → timestamp)
+  private revealTimer: ReturnType<typeof setTimeout> | null = null; // answer reveal before the next question
   private hostId: string | null = null; // Track the host (initiator who configured the lobby)
   
   // Chat session management
@@ -370,7 +374,7 @@ export default class GameServer implements Party.Server {
 
       // Auto-advance if all players answered current question
       if (this.checkAllAnsweredCurrentQuestion()) {
-        this.advanceToNextQuestion();
+        this.revealThenAdvance();
       }
       return;
     }
@@ -410,7 +414,7 @@ export default class GameServer implements Party.Server {
 
       // Auto-advance if all players answered current question
       if (this.checkAllAnsweredCurrentQuestion()) {
-        this.advanceToNextQuestion();
+        this.revealThenAdvance();
       }
       return;
     }
@@ -765,6 +769,8 @@ export default class GameServer implements Party.Server {
     }
     // Reset question index
     this.currentQuestionIndex = 0;
+    if (this.revealTimer) clearTimeout(this.revealTimer);
+    this.revealTimer = null;
   }
 
   private handleConfigureLobby(payload: { deck?: string }): void {
@@ -863,7 +869,7 @@ export default class GameServer implements Party.Server {
 
     // Recalculate if in ANSWERING phase
     if (this.phase === GamePhase.ANSWERING && this.checkAllAnsweredCurrentQuestion()) {
-      this.advanceToNextQuestion();
+      this.revealThenAdvance();
     }
   }
 
@@ -885,6 +891,30 @@ export default class GameServer implements Party.Server {
       const user = this.users.get(conn.id);
       return user && user.answers.has(currentQuestion.id);
     });
+  }
+
+  // Everyone answered: show the answers for REVEAL_MS, then move on.
+  private revealThenAdvance(): void {
+    if (this.revealTimer) return;
+    const question = this.questions[this.currentQuestionIndex];
+    if (!question) return this.advanceToNextQuestion();
+    const answers: AnswerRevealMessage["answers"] = [];
+    for (const conn of this.room.getConnections()) {
+      const u = this.users.get(conn.id);
+      const a = u?.answers.get(question.id);
+      if (!u || !a) continue;
+      answers.push(
+        a.value.type === "choice"
+          ? { id: conn.id, name: u.name, color: u.color, answerId: a.value.answerId }
+          : { id: conn.id, name: u.name, color: u.color, value: a.value.value },
+      );
+    }
+    const msg: AnswerRevealMessage = { type: "ANSWER_REVEAL", questionId: question.id, answers };
+    this.room.broadcast(JSON.stringify(msg));
+    this.revealTimer = setTimeout(() => {
+      this.revealTimer = null;
+      if (this.phase === GamePhase.ANSWERING) this.advanceToNextQuestion();
+    }, REVEAL_MS);
   }
 
   private advanceToNextQuestion(): void {

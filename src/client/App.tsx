@@ -134,6 +134,7 @@ export default function App() {
     activeChat,
     chatMessages,
     hostId,
+    answerReveal,
     addChatMessageLocally,
   } = gameState;
 
@@ -479,6 +480,22 @@ export default function App() {
     return <Landing onCreateLobby={handleCreateLobby} />;
   }
 
+  // where each creature leaves from at the answer reveal (stage coordinates)
+  const revealStarts: Record<string, { x: number; y: number } | undefined> = {};
+  if (answerReveal && !isMobile) {
+    for (const [id, u] of Object.entries(users)) {
+      if (u.x != null && u.y != null) revealStarts[id] = { x: u.x, y: u.y };
+    }
+    const vp = viewportRef.current?.getBoundingClientRect();
+    if (myId && vp && mousePosition) {
+      revealStarts[myId] = {
+        x: ((mousePosition.x - vp.left) / vp.width) * VIEWPORT_W,
+        y: ((mousePosition.y - vp.top) / vp.height) * VIEWPORT_H,
+      };
+    }
+  }
+  const awayIds = new Set(answerReveal ? answerReveal.answers.map((a) => a.id) : []);
+
   const views = (
     <>
           {phase === GamePhase.LOBBY && roomId && (
@@ -514,6 +531,8 @@ export default function App() {
                 myColor={displayColor}
                 onAnswer={handleAnswer}
                 onSliderAnswer={handleSliderAnswer}
+                answerReveal={answerReveal}
+                revealStarts={revealStarts}
               />
           )}
           {phase === GamePhase.RESULTS && (
@@ -659,6 +678,7 @@ export default function App() {
                       velocity={u.velocity}
                       dropEventId={dropEventId}
                       isOnCooldown={cooldownCheck}
+                      away={awayIds.has(id)}
                     />
                   </div>
                 );
@@ -697,6 +717,7 @@ export default function App() {
                 dropEventId={dropEventId}
                 isClicking={isClicking}
                 surprised={!!(myId && users[myId]?.nudgeNotification)}
+                away={!!myId && awayIds.has(myId)}
               />
             </div>
           );
