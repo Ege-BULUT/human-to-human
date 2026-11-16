@@ -311,3 +311,19 @@
 @media (prefers-reduced-motion: reduce) {
   .hf-spark { display: none; }
 }
+.hf-spark-big {
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+}
+
+@media (max-width: 760px) {
+  .nudge-banner-content,
+  .reveal-request-banner-content {
+    white-space: normal;
+    max-width: calc(100vw - 24px);
+    padding: 12px 16px;
+    font-size: 15px;
+    gap: 12px;
+  }
+}

@@ -11,6 +11,8 @@ import { ChatModal } from "@/components/game/ChatModal";
 import { Cursor } from "@/components/game/Cursor";
 import { Creature } from "@/components/creature/Creature";
 import { PresenceStrip } from "@/components/game/PresenceStrip";
+import { MutualRevealCelebration } from "@/components/game/MutualRevealCelebration";
+import { AnimatePresence } from "framer-motion";
 import { GamePhase } from "@/types/game";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useGameState } from "@/hooks/useGameState";
@@ -137,6 +139,18 @@ export default function App() {
     answerReveal,
     addChatMessageLocally,
   } = gameState;
+
+  // Mutual reveal celebration: fires once per newly revealed partner
+  const [celebration, setCelebration] = useState<{ name: string; color: string } | null>(null);
+  const seenRevealsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const [id, r] of revealedUsers) {
+      if (seenRevealsRef.current.has(id)) continue;
+      seenRevealsRef.current.add(id);
+      setCelebration({ name: r.name, color: r.color });
+    }
+  }, [revealedUsers]);
+  const endCelebration = useCallback(() => setCelebration(null), []);
 
   // Update myId ref when it changes
   useEffect(() => {
@@ -549,6 +563,7 @@ export default function App() {
             <RevealView
               matches={results}
               revealedUsers={revealedUsers}
+              users={users}
               onRevealRequest={handleRevealRequest}
               onResetGame={handleResetGame}
             />
@@ -580,8 +595,14 @@ export default function App() {
           />
         ))}
 
-      {/* Show chat modal */}
-      {activeChat && (
+      <AnimatePresence>
+        {celebration && myName && myColor && (
+          <MutualRevealCelebration me={{ name: myName, color: myColor }} partner={celebration} onDone={endCelebration} />
+        )}
+      </AnimatePresence>
+
+      {/* Show chat modal (after the celebration) */}
+      {activeChat && !celebration && (
         <ChatModal
           chatId={activeChat.chatId}
           partnerName={activeChat.partnerName}
