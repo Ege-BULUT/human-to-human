@@ -9,6 +9,7 @@ import { NudgeNotification } from "@/components/game/NudgeNotification";
 import { RevealRequestNotification } from "@/components/game/RevealRequestNotification";
 import { ChatModal } from "@/components/game/ChatModal";
 import { Cursor } from "@/components/game/Cursor";
+import { Creature } from "@/components/creature/Creature";
 import { GamePhase } from "@/types/game";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useGameState } from "@/hooks/useGameState";
@@ -595,6 +596,8 @@ export default function App() {
                     <Cursor
                       name={u.name}
                       color={u.color}
+                      x={u.x}
+                      y={u.y}
                       velocity={u.velocity}
                       dropEventId={dropEventId}
                       isOnCooldown={cooldownCheck}
@@ -631,9 +634,11 @@ export default function App() {
               <Cursor
                 name={displayName}
                 color={displayColor}
-                velocity={0}
+                x={mousePosition.x}
+                y={mousePosition.y}
                 dropEventId={dropEventId}
                 isClicking={isClicking}
+                surprised={!!(myId && users[myId]?.nudgeNotification)}
               />
             </div>
           );
@@ -676,7 +681,8 @@ export default function App() {
       {roomId && myName && myColor && phase !== GamePhase.LOBBY && (
         <div className="status-bar">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Your name:</span>
+            <Creature name={myName} color={myColor} size={36} />
+            <span className="text-sm text-muted-foreground">You are</span>
             <span
               className="text-sm font-bold"
               style={{ color: myColor }}
