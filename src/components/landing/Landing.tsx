@@ -10,6 +10,8 @@ type Props = {
 };
 
 const REPO = "https://github.com/jpzk/human-to-human";
+// set on copies hosted elsewhere (e.g. a v2 demo) to link back to the original site
+const ORIGINAL_SITE = import.meta.env.VITE_ORIGINAL_SITE as string | undefined;
 
 const DECK_INFO: Record<string, { label: string; tagline: string; color: string; mascot: string }> = {
   "Friendship Fortunes": {
@@ -270,6 +272,14 @@ export function Landing({ onCreateLobby }: Props) {
             <p className="mt-2 text-[12px] text-muted-foreground">
               Built with Cursor, MiniMax and Hume.ai. Original project:{" "}
               <a className="underline underline-offset-2" href={REPO} target="_blank" rel="noreferrer">github.com/jpzk/human-to-human</a>
+              {" · "}
+              <a className="underline underline-offset-2" href={`${REPO}/graphs/contributors`} target="_blank" rel="noreferrer">all contributors</a>
+              {ORIGINAL_SITE && (
+                <>
+                  {" · "}
+                  <a className="underline underline-offset-2" href={ORIGINAL_SITE} target="_blank" rel="noreferrer">play the original</a>
+                </>
+              )}
             </p>
           </div>
           <div className="flex -space-x-3">
