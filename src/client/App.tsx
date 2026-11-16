@@ -557,6 +557,8 @@ export default function App() {
               totalPlayers={resultsTotalPlayers}
               isCurrentUserReady={isCurrentUserReady}
               onPlayerReady={handlePlayerReady}
+              users={users}
+              deckName={lobbyConfig?.deck || ""}
             />
           )}
           {phase === GamePhase.REVEAL && (
