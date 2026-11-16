@@ -10,6 +10,7 @@ import { RevealRequestNotification } from "@/components/game/RevealRequestNotifi
 import { ChatModal } from "@/components/game/ChatModal";
 import { Cursor } from "@/components/game/Cursor";
 import { Creature } from "@/components/creature/Creature";
+import { PresenceStrip } from "@/components/game/PresenceStrip";
 import { GamePhase } from "@/types/game";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useGameState } from "@/hooks/useGameState";
@@ -28,7 +29,20 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+function useIsMobile() {
+  const query = "(max-width: 760px)";
+  const [m, setM] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = () => setM(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return m;
+}
+
 export default function App() {
+  const isMobile = useIsMobile();
   const [scale, setScale] = useState(1);
   const [isClicking, setIsClicking] = useState(false);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
@@ -465,27 +479,8 @@ export default function App() {
     return <Landing onCreateLobby={handleCreateLobby} />;
   }
 
-  return (
+  const views = (
     <>
-      <div className="viewport-container" style={cursorStyle}>
-        <img 
-          src="/logo-name.svg" 
-          alt="Logo" 
-          className="absolute" 
-          style={{ 
-            height: `${64 * scale}px`,
-            top: `calc(50% - ${(VIEWPORT_H * scale) / 2 + 80 * scale}px)`
-          }} 
-        />
-        <div
-          ref={viewportRef}
-          className="viewport"
-          style={{
-            width: VIEWPORT_W,
-            height: VIEWPORT_H,
-            transform: `scale(${scale})`,
-          }}
-        >
           {phase === GamePhase.LOBBY && roomId && (
             <WaitingLobbyView
               users={users}
@@ -539,6 +534,99 @@ export default function App() {
               onResetGame={handleResetGame}
             />
           )}
+    </>
+  );
+
+  const overlays = (
+    <>
+      {/* Show nudge notification as fixed top-center banner */}
+      {myId && users[myId]?.nudgeNotification && (
+        <NudgeNotification
+          from={users[myId].nudgeNotification.from}
+          color={users[myId].nudgeNotification.color}
+        />
+      )}
+
+      {/* Show reveal request notifications */}
+      {Array.from(revealNotifications.entries())
+        .filter(([requesterId]) => !dismissedNotifications.has(requesterId))
+        .map(([requesterId, notification], index) => (
+          <RevealRequestNotification
+            key={requesterId}
+            requesterId={notification.requesterId}
+            requesterName={notification.requesterName}
+            requesterColor={notification.requesterColor}
+            onDismiss={() => handleDismissRevealNotification(requesterId)}
+            top={20 + index * 80}
+          />
+        ))}
+
+      {/* Show chat modal */}
+      {activeChat && (
+        <ChatModal
+          chatId={activeChat.chatId}
+          partnerName={activeChat.partnerName}
+          partnerColor={activeChat.partnerColor}
+          messages={chatMessages}
+          onSendMessage={handleSendChatMessage}
+          onCloseRequest={handleCloseChat}
+        />
+      )}
+      
+
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="mobile-shell">
+          <header className="mobile-header">
+            <img src="/logo-name.svg" alt="hands" className="h-6" />
+            {myName && myColor && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">You are</span>
+                <span className="font-bold">{myName}</span>
+                <Creature name={myName} color={myColor} size={34} />
+              </div>
+            )}
+          </header>
+          {phase !== GamePhase.LOBBY && (
+            <PresenceStrip
+              users={users}
+              myId={myId}
+              answered={phase === GamePhase.ANSWERING && currentQuestion ? answeredBy[currentQuestion.id] : undefined}
+            />
+          )}
+          <main className="mobile-stage">{views}</main>
+        </div>
+        {overlays}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="viewport-container" style={cursorStyle}>
+        <img 
+          src="/logo-name.svg" 
+          alt="Logo" 
+          className="absolute" 
+          style={{ 
+            height: `${64 * scale}px`,
+            top: `calc(50% - ${(VIEWPORT_H * scale) / 2 + 80 * scale}px)`
+          }} 
+        />
+        <div
+          ref={viewportRef}
+          className="viewport"
+          style={{
+            width: VIEWPORT_W,
+            height: VIEWPORT_H,
+            transform: `scale(${scale})`,
+          }}
+        >
+          {views}
           <div className="cursors" aria-hidden>
             {Object.entries(users)
               .filter(([id]) => id !== myId)
@@ -614,40 +702,26 @@ export default function App() {
           );
         })()}
       
-      {/* Show nudge notification as fixed top-center banner */}
-      {myId && users[myId]?.nudgeNotification && (
-        <NudgeNotification
-          from={users[myId].nudgeNotification.from}
-          color={users[myId].nudgeNotification.color}
-        />
-      )}
+      {overlays}
 
-      {/* Show reveal request notifications */}
-      {Array.from(revealNotifications.entries())
-        .filter(([requesterId]) => !dismissedNotifications.has(requesterId))
-        .map(([requesterId, notification], index) => (
-          <RevealRequestNotification
-            key={requesterId}
-            requesterId={notification.requesterId}
-            requesterName={notification.requesterName}
-            requesterColor={notification.requesterColor}
-            onDismiss={() => handleDismissRevealNotification(requesterId)}
-            top={20 + index * 80}
-          />
-        ))}
+      {/* players on phones send no cursor; show them so desktop players still see everyone */}
+      {(() => {
+        const phoneUsers = Object.fromEntries(
+          Object.entries(users).filter(([id, u]) => id !== myId && (u.x == null || u.y == null)),
+        );
+        if (Object.keys(phoneUsers).length === 0 || phase === GamePhase.LOBBY) return null;
+        return (
+          <div className="fixed bottom-2 right-3 z-10 flex items-center gap-1 rounded-2xl bg-background/80 backdrop-blur border border-border pl-3">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">On phones</span>
+            <PresenceStrip
+              users={phoneUsers}
+              myId={myId}
+              answered={phase === GamePhase.ANSWERING && currentQuestion ? answeredBy[currentQuestion.id] : undefined}
+            />
+          </div>
+        );
+      })()}
 
-      {/* Show chat modal */}
-      {activeChat && (
-        <ChatModal
-          chatId={activeChat.chatId}
-          partnerName={activeChat.partnerName}
-          partnerColor={activeChat.partnerColor}
-          messages={chatMessages}
-          onSendMessage={handleSendChatMessage}
-          onCloseRequest={handleCloseChat}
-        />
-      )}
-      
       {roomId && myName && myColor && phase !== GamePhase.LOBBY && (
         <div className="status-bar">
           <div className="flex items-center gap-2">

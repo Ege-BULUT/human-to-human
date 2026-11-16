@@ -39,7 +39,7 @@ export function AnsweringView({
   return (
     <>
       {/* Question progress indicator */}
-      <div className="absolute top-[calc(50%+280px)] left-1/2 -translate-x-1/2 flex gap-2 z-10">
+      <div className="absolute top-[calc(50%+280px)] left-1/2 -translate-x-1/2 flex gap-2 z-10 mobile:fixed mobile:top-auto mobile:bottom-5">
         {questions.map((q, idx) => {
           const isAnswered = hasUserAnsweredQuestion(q.id, myName, answeredBy);
           const isCurrent = idx === currentQuestionIndex;

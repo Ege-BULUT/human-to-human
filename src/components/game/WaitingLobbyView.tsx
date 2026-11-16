@@ -48,8 +48,8 @@ export function WaitingLobbyView({
   };
 
   return (
-    <div className="flex items-center justify-center h-full w-full bg-background">
-      <div className="w-full max-w-4xl px-8 py-12">
+    <div className="flex items-center justify-center h-full w-full bg-background mobile:h-auto mobile:min-h-full">
+      <div className="w-full max-w-4xl px-8 py-12 mobile:px-4 mobile:py-4">
         <div className="grid md:grid-cols-2 gap-8">
           {/* Left side: Player list and config */}
           <div className="space-y-6">

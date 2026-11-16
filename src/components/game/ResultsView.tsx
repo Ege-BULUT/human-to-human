@@ -67,7 +67,7 @@ export function ResultsView({
   };
 
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center border border-border rounded-lg max-w-2xl w-[90%] max-h-[80vh] bg-background">
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center border border-border rounded-lg max-w-2xl w-[90%] max-h-[80vh] bg-background mobile:relative mobile:top-0 mobile:left-0 mobile:translate-x-0 mobile:translate-y-0 mobile:w-full mobile:h-full mobile:max-h-none mobile:border-0 mobile:rounded-none">
       {/* Header */}
       <div className="flex flex-col items-center gap-2 p-6 pb-4 flex-shrink-0">
         <h2 className="text-3xl font-bold text-center text-foreground">
